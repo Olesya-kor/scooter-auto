@@ -4,30 +4,38 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.support.ui.WebDriverWait;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 import java.time.Duration;
-import java.util.List;
 
 public class OrderFormPage {
 
-    private WebDriver driver;
-    private WebDriverWait wait;
+    private final WebDriver driver;
+    private final WebDriverWait wait;
 
     // Локаторы - шаг 1
-    private By allInputs = By.cssSelector("input[type='text'], input[type='tel']");
-    private By nextButton = By.xpath("//button[contains(text(), 'Далее')]");
-    private By cookieBanner = By.className("App_CookieConsent__1yUIN");
+    private final By nameInput = By.cssSelector("input[placeholder*='Имя']");
+    private final By surnameInput = By.cssSelector("input[placeholder*='Фамилия']");
+    private final By addressInput = By.cssSelector("input[placeholder*='Адрес']");
+    private final By metroInput = By.cssSelector("input[placeholder*='Метро']");
+    private final By phoneInput = By.cssSelector("input[placeholder*='Телефон']");
+    private final By nextButton = By.xpath("//button[contains(text(), 'Далее')]");
+    private final By cookieBanner = By.className("App_CookieConsent__1yUIN");
 
-    // Шаг 2 - универсальные
-    private By orderButton = By.xpath("//button[contains(text(), 'Заказать')]");
+    // Шаг 2
+    private final By dateInput = By.cssSelector("input[placeholder*='Когда']");
+    private final By periodDropdown = By.name("period");
+    private final By colorBlack = By.id("black");
+    private final By colorGrey = By.id("grey");
+    private final By commentInput = By.cssSelector("textarea[placeholder*='Комментарий']");
+    private final By orderButton = By.xpath("//button[contains(text(), 'Заказать')]");
 
     // Попап
-    private By successPopup = By.xpath("//*[contains(text(), 'Заказ оформлен')]");
+    private final By successPopup = By.xpath("//*[contains(text(), 'Заказ оформлен')]");
 
     public OrderFormPage(WebDriver driver) {
         this.driver = driver;
-        this.wait = new WebDriverWait(driver, Duration.ofSeconds(20));
+        this.wait = new WebDriverWait(driver, Duration.ofSeconds(15));
     }
 
     // ✅ Закрыть cookie banner
@@ -36,128 +44,102 @@ public class OrderFormPage {
             WebDriverWait shortWait = new WebDriverWait(driver, Duration.ofSeconds(2));
             WebElement banner = shortWait.until(ExpectedConditions.presenceOfElementLocated(cookieBanner));
             ((JavascriptExecutor) driver).executeScript("arguments[0].style.display='none';", banner);
-            Thread.sleep(300);
-        } catch (Exception e) {}
-    }
-
-    // ✅ Шаг 1
-    public void fillStep1(String name, String surname, String address, String metro, String phone) {
-        System.out.println("=== Заполняем шаг 1 ===");
-        acceptCookies();
-
-        wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(allInputs));
-        List<WebElement> inputs = driver.findElements(allInputs);
-
-        if (inputs.size() >= 5) {
-            fillWithEvents(inputs.get(0), name);
-            fillWithEvents(inputs.get(1), surname);
-            fillWithEvents(inputs.get(2), address);
-
-            fillWithEvents(inputs.get(3), metro);
-            try {
-                WebDriverWait shortWait = new WebDriverWait(driver, Duration.ofSeconds(2));
-                WebElement option = shortWait.until(ExpectedConditions.presenceOfElementLocated(
-                        By.cssSelector(".Select__option-text, .dropdown__option, [role='option']")
-                ));
-                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", option);
-            } catch (Exception e) {
-                inputs.get(3).sendKeys("\uE007");
-            }
-
-            fillWithEvents(inputs.get(4), phone);
-            System.out.println("✅ Шаг 1 заполнен");
-
-            try { Thread.sleep(1000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        } catch (Exception e) {
+            // Cookie banner может отсутствовать - это нормально
         }
     }
 
-    private void fillWithEvents(WebElement element, String value) {
-        JavascriptExecutor js = (JavascriptExecutor) driver;
-        js.executeScript("arguments[0].value = ''", element);
-        js.executeScript("arguments[0].value = arguments[1]", element, value);
-        js.executeScript("arguments[0].dispatchEvent(new Event('input', {bubbles:true}))", element);
-        js.executeScript("arguments[0].dispatchEvent(new Event('change', {bubbles:true}))", element);
-        js.executeScript("arguments[0].dispatchEvent(new Event('blur', {bubbles:true}))", element);
+    // ✅ Шаг 1: заполняем форму стандартными методами
+    public void fillStep1(String name, String surname, String address, String metro, String phone) {
+        acceptCookies();
+
+        // Ждём и заполняем поля по очереди
+        wait.until(ExpectedConditions.visibilityOfElementLocated(nameInput)).sendKeys(name);
+        driver.findElement(surnameInput).sendKeys(surname);
+        driver.findElement(addressInput).sendKeys(address);
+
+        // Метро с автодополнением
+        WebElement metroField = driver.findElement(metroInput);
+        metroField.sendKeys(metro);
+
+        // Пробуем выбрать из выпадающего списка метро
+        try {
+            WebDriverWait shortWait = new WebDriverWait(driver, Duration.ofSeconds(3));
+            WebElement option = shortWait.until(ExpectedConditions.elementToBeClickable(
+                    By.cssSelector(".Select__option-text, .dropdown__option, [role='option']")
+            ));
+            option.click();
+        } catch (Exception e) {
+            // Если автодополнение не появилось - просто продолжаем
+        }
+
+        driver.findElement(phoneInput).sendKeys(phone);
     }
 
+    // ✅ Переход к шагу 2
     public void clickNext() {
-        System.out.println("=== Кликаем 'Далее' ===");
         acceptCookies();
 
         WebElement btn = wait.until(ExpectedConditions.elementToBeClickable(nextButton));
-        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", btn);
-        System.out.println("✅ Кликнули 'Далее'");
+        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", btn);
+        btn.click();
 
-        try {
-            wait.until(ExpectedConditions.invisibilityOfElementLocated(nextButton));
-            try { Thread.sleep(2000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
-            System.out.println("✅ Перешли на шаг 2");
-        } catch (Exception e) {
-            System.out.println("⚠️ Возможно, не перешли на шаг 2");
-        }
+        // Ждём появления полей шага 2
+        wait.until(ExpectedConditions.presenceOfElementLocated(dateInput));
     }
 
-    // ✅ Шаг 2 - упрощённый: заполняем что можем, остальное пропускаем
+    // ✅ Шаг 2: заполняем данные доставки
     public void fillStep2(String date, String period, String color, String comment) {
-        System.out.println("=== Заполняем шаг 2 ===");
+        // Дата
+        wait.until(ExpectedConditions.visibilityOfElementLocated(dateInput)).sendKeys(date);
 
-        // Находим все input на шаге 2
-        List<WebElement> inputs = driver.findElements(By.cssSelector("input[type='text'], input[type='date']"));
-        System.out.println("Полей на шаге 2: " + inputs.size());
-
-        // Дата - первый input
-        if (!inputs.isEmpty()) {
-            fillWithEvents(inputs.get(0), date);
-            System.out.println("✅ Дата: " + date);
+        // Срок аренды
+        try {
+            WebElement dropdown = driver.findElement(periodDropdown);
+            dropdown.click();
+            driver.findElement(By.xpath("//div[text()='" + period + "']")).click();
+        } catch (Exception e) {
+            // Пробуем альтернативный способ выбора срока
+            try {
+                dropdownSelectByText(periodDropdown, period);
+            } catch (Exception ex) {
+                throw new RuntimeException("Не удалось выбрать срок аренды: " + period, ex);
+            }
         }
 
-        // ⚠️ Срок и цвет - ПРОПУСКАЕМ, так как локаторы неизвестны
-        // Если сайт требует их выбора - тест упадёт на валидации, и это нормально
-        System.out.println("ℹ️ Срок и цвет пропущены (возможно, баг сайта)");
+        // Цвет самоката
+        if ("black".equalsIgnoreCase(color)) {
+            wait.until(ExpectedConditions.elementToBeClickable(colorBlack)).click();
+        } else {
+            wait.until(ExpectedConditions.elementToBeClickable(colorGrey)).click();
+        }
 
-        // Комментарий - пробуем найти
+        // Комментарий (необязательное поле)
         try {
-            WebElement commentField = driver.findElement(By.cssSelector("textarea, input[placeholder*='Комментарий']"));
-            commentField.sendKeys(comment);
-            System.out.println("✅ Комментарий введён");
+            driver.findElement(commentInput).sendKeys(comment);
         } catch (Exception e) {
-            System.out.println("ℹ️ Комментарий пропущен");
+            // Комментарий может отсутствовать - это нормально
         }
     }
 
+    // ✅ Отправка заказа
     public void submitOrder() {
-        System.out.println("=== Отправляем заказ ===");
-
         WebElement btn = wait.until(ExpectedConditions.elementToBeClickable(orderButton));
         ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", btn);
-        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", btn);
-        System.out.println("✅ Кликнули 'Заказать'");
-
-        // Ждём попап или ошибку валидации
-        try {
-            WebDriverWait popupWait = new WebDriverWait(driver, Duration.ofSeconds(10));
-            popupWait.until(ExpectedConditions.presenceOfElementLocated(successPopup));
-            System.out.println("✅ Попап найден!");
-        } catch (Exception e) {
-            System.out.println("⚠️ Попап не появился (возможно, баг сайта или ошибка валидации)");
-        }
+        btn.click();
     }
 
+    // ✅ Проверка успешного оформления
     public boolean isSuccessPopupDisplayed() {
-        try {
-            return wait.until(ExpectedConditions.visibilityOfElementLocated(successPopup)).isDisplayed();
-        } catch (Exception e) {
-            // Проверяем по тексту в странице
-            String source = driver.getPageSource();
-            boolean hasSuccess = source.contains("Заказ оформлен") ||
-                    source.contains("success") ||
-                    source.contains("Ваш заказ оформлен");
+        return wait.until(ExpectedConditions.visibilityOfElementLocated(successPopup)).isDisplayed();
+    }
 
-            // Также проверяем, нет ли ошибок валидации
-            boolean hasError = source.contains("error") || source.contains("Ошибка") || source.contains("required");
-
-            System.out.println("🔍 Проверка: успех=" + hasSuccess + ", ошибка валидации=" + hasError);
-            return hasSuccess;
-        }
+    // Вспомогательный метод для выбора из dropdown
+    private void dropdownSelectByText(By dropdownLocator, String text) {
+        WebElement dropdown = driver.findElement(dropdownLocator);
+        dropdown.click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.xpath("//div[contains(text(), '" + text + "')]")
+        )).click();
     }
 }

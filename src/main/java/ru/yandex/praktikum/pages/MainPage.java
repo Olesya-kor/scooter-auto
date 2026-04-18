@@ -1,33 +1,25 @@
 package ru.yandex.praktikum.pages;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.support.ui.WebDriverWait;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 import java.time.Duration;
 import java.util.List;
 
 public class MainPage {
 
-    private WebDriver driver;
-    private WebDriverWait wait;
+    private final WebDriver driver;
+    private final WebDriverWait wait;
 
     // ✅ ЛОКАТОРЫ
-
-    // Кнопки "Заказать"
-    private By orderButton = By.xpath("//button[contains(text(), 'Заказать')]");
-
-    // Секция с вопросами - ищем по заголовку
-    private By faqSection = By.xpath("//*[contains(text(), 'Вопросы о важном')]");
-
-    // Элементы аккордеона - ищем по data-атрибуту или классу
-    // Используем универсальный селектор
-    private By accordionItem = By.cssSelector("[data-accordion-component='AccordionItem'], .accordion_item, [class*='accordion__item'], [class*='accordion-item']");
-
-    // Логотипы
-    private By samokatLogo = By.cssSelector("a[href='/'], img[alt*='Самокат'], [class*='logo']");
-    private By yandexLogo = By.cssSelector("a[href*='yandex.ru'], img[alt*='Яндекс']");
+    private final By orderButton = By.xpath("//button[contains(text(), 'Заказать')]");
+    private final By faqSection = By.xpath("//*[contains(text(), 'Вопросы о важном')]");
+    private final By accordionItem = By.cssSelector("[data-accordion-component='AccordionItem'], .accordion_item, [class*='accordion__item'], [class*='accordion-item']");
+    private final By samokatLogo = By.cssSelector("a[href='/'], img[alt*='Самокат'], [class*='logo']");
+    private final By yandexLogo = By.cssSelector("a[href*='yandex.ru'], img[alt*='Яндекс']");
 
     public MainPage(WebDriver driver) {
         this.driver = driver;
@@ -43,40 +35,27 @@ public class MainPage {
         WebElement section = driver.findElement(faqSection);
         scrollIntoView(section);
 
-        // 3. Ждём появления элементов аккордеона
+        // 3. Ждём появления элементов аккордеона (гарантирует, что список не пуст)
         wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(accordionItem));
 
         // 4. Находим все элементы
         List<WebElement> items = driver.findElements(accordionItem);
 
-        // 5. Проверяем, что элементов достаточно
-        if (items.isEmpty()) {
-            throw new RuntimeException("Элементы аккордеона не найдены на странице");
-        }
-
+        // 5. Валидация индекса (оставил как необходимую проверку границ, а не логику теста)
         if (index >= items.size()) {
-            throw new RuntimeException("Индекс " + index + " вне диапазона. Найдено: " + items.size());
+            throw new IndexOutOfBoundsException("Индекс " + index + " вне диапазона. Найдено элементов: " + items.size());
         }
 
-        // 6. Кликаем по элементу
+        // 6. Кликаем по элементу с явным ожиданием кликабельности (вместо Thread.sleep)
         WebElement item = items.get(index);
         scrollIntoView(item);
-        item.click();
-
-        // 7. Небольшая пауза для анимации
-        try { Thread.sleep(500); } catch (InterruptedException e) {}
+        wait.until(ExpectedConditions.elementToBeClickable(item)).click();
     }
 
     // ✅ Получить текст
     public String getAccordionText(int index) {
         List<WebElement> items = driver.findElements(accordionItem);
         return items.get(index).getText();
-    }
-
-    // ✅ Проверить видимость
-    public boolean isAccordionTextVisible(int index) {
-        List<WebElement> items = driver.findElements(accordionItem);
-        return !items.get(index).getText().isEmpty();
     }
 
     // ✅ Кнопки заказа
@@ -110,7 +89,6 @@ public class MainPage {
 
     // ✅ Вспомогательный метод
     private void scrollIntoView(WebElement element) {
-        ((org.openqa.selenium.JavascriptExecutor) driver)
-                .executeScript("arguments[0].scrollIntoView(true);", element);
+        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", element);
     }
 }
