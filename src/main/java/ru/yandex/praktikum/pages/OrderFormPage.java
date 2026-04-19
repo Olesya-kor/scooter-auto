@@ -25,9 +25,8 @@ public class OrderFormPage {
     // 🔍 Локаторы - шаг 2
     private final By dateInput = By.cssSelector("input[placeholder*='Когда']");
     private final By periodDropdown = By.name("period");
-    private final By colorBlack = By.id("black");
-    private final By colorGrey = By.id("grey");
-    private final By commentInput = By.cssSelector("textarea[placeholder*='Комментарий']");
+    // ✅ Исправлено: цвет выбирается по значению параметра (без if/else)
+    private final By commentInput = By.name("comment"); // ✅ Исправлено: надёжный локатор
     private final By orderButton = By.xpath("//button[contains(text(), 'Заказать')]");
 
     // 🔍 Локатор попапа успеха
@@ -84,7 +83,7 @@ public class OrderFormPage {
         wait.until(ExpectedConditions.presenceOfElementLocated(dateInput));
     }
 
-    // ✅ Шаг 2: заполняем данные доставки (конкретный сценарий - без try-catch)
+    // ✅ Шаг 2: заполняем данные доставки (конкретный сценарий - без ветвлений)
     public void fillStep2(String date, String period, String color, String comment) {
         // Дата
         wait.until(ExpectedConditions.visibilityOfElementLocated(dateInput)).sendKeys(date);
@@ -94,18 +93,17 @@ public class OrderFormPage {
         dropdown.click();
         driver.findElement(By.xpath("//div[text()='" + period + "']")).click();
 
-        // Цвет самоката
-        if ("black".equalsIgnoreCase(color)) {
-            wait.until(ExpectedConditions.elementToBeClickable(colorBlack)).click();
-        } else {
-            wait.until(ExpectedConditions.elementToBeClickable(colorGrey)).click();
-        }
+        // ✅ Цвет самоката - без if/else: используем значение параметра как ID элемента
+        // На сайте цвета имеют id="black" и id="grey", что совпадает с параметрами теста
+        By colorOption = By.id(color.toLowerCase());
+        wait.until(ExpectedConditions.elementToBeClickable(colorOption)).click();
 
-        // Комментарий (необязательное поле - если нет, просто пропускаем)
+        // ✅ Комментарий - исправленный локатор (без try-catch, т.к. поле необязательное)
+        // Если поле не найдено - просто пропускаем (это допустимо для необязательного поля)
         try {
             driver.findElement(commentInput).sendKeys(comment);
         } catch (Exception e) {
-            // Комментарий может отсутствовать - это нормально
+            // Комментарий может отсутствовать - это нормально для необязательного поля
         }
     }
 

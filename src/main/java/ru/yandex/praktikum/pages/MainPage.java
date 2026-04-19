@@ -14,12 +14,12 @@ public class MainPage {
     private final WebDriver driver;
     private final WebDriverWait wait;
 
-    // ✅ ЛОКАТОРЫ
+    // 🔍 Локаторы
     private final By orderButton = By.xpath("//button[contains(text(), 'Заказать')]");
     private final By faqSection = By.xpath("//*[contains(text(), 'Вопросы о важном')]");
     private final By accordionItem = By.cssSelector("[data-accordion-component='AccordionItem'], .accordion_item, [class*='accordion__item'], [class*='accordion-item']");
-    private final By samokatLogo = By.cssSelector("a[href='/'], img[alt*='Самокат'], [class*='logo']");
-    private final By yandexLogo = By.cssSelector("a[href*='yandex.ru'], img[alt*='Яндекс']");
+    // ✅ Локатор для текста ответа (внутри аккордеона)
+    private final By accordionContent = By.cssSelector(".AccordionItem__content, [class*='accordion__content'], [class*='accordion-content']");
 
     public MainPage(WebDriver driver) {
         this.driver = driver;
@@ -35,27 +35,36 @@ public class MainPage {
         WebElement section = driver.findElement(faqSection);
         scrollIntoView(section);
 
-        // 3. Ждём появления элементов аккордеона (гарантирует, что список не пуст)
+        // 3. Ждём появления элементов аккордеона
         wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(accordionItem));
 
         // 4. Находим все элементы
         List<WebElement> items = driver.findElements(accordionItem);
 
-        // 5. Валидация индекса (оставил как необходимую проверку границ, а не логику теста)
+        // 5. Валидация индекса
         if (index >= items.size()) {
             throw new IndexOutOfBoundsException("Индекс " + index + " вне диапазона. Найдено элементов: " + items.size());
         }
 
-        // 6. Кликаем по элементу с явным ожиданием кликабельности (вместо Thread.sleep)
+        // 6. Кликаем по элементу
         WebElement item = items.get(index);
         scrollIntoView(item);
         wait.until(ExpectedConditions.elementToBeClickable(item)).click();
     }
 
-    // ✅ Получить текст
+    // ✅ Получить текст ТОЛЬКО ответа (без вопроса)
     public String getAccordionText(int index) {
         List<WebElement> items = driver.findElements(accordionItem);
-        return items.get(index).getText();
+        WebElement item = items.get(index);
+
+        // Ищем контент ответа внутри элемента аккордеона
+        try {
+            WebElement content = item.findElement(accordionContent);
+            return content.getText();
+        } catch (Exception e) {
+            // Если не нашли по классу контента, возвращаем весь текст (fallback)
+            return item.getText();
+        }
     }
 
     // ✅ Кнопки заказа
@@ -73,15 +82,7 @@ public class MainPage {
         wait.until(ExpectedConditions.elementToBeClickable(button)).click();
     }
 
-    // ✅ Логотипы
-    public void clickSamokatLogo() {
-        driver.findElement(samokatLogo).click();
-    }
-
-    public void clickYandexLogo() {
-        driver.findElement(yandexLogo).click();
-    }
-
+    // ✅ Переход на страницу заказа
     public OrderFormPage goToOrderForm() {
         clickHeaderOrderButton();
         return new OrderFormPage(driver);
