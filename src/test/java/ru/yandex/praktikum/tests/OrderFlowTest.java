@@ -12,6 +12,7 @@ import java.util.Collection;
 
 import static org.junit.Assert.assertTrue;
 
+
 @RunWith(Parameterized.class)
 public class OrderFlowTest extends BaseTest {
 
@@ -41,38 +42,49 @@ public class OrderFlowTest extends BaseTest {
         this.entryPoint = entryPoint;
     }
 
-    @Parameterized.Parameters
+    @Parameterized.Parameters(name = "{index}: Заказ через {9} - {0} {1}, метро {3}, цвет {7}")
     public static Collection<Object[]> orderData() {
         return Arrays.asList(new Object[][] {
                 {
                         "Иван", "Иванов", "Москва, Тверская 1", "Комсомольская",
                         "+79991234567", "20.12.2024", "Трое суток", "black",
-                        "Без комментариев", "header"
+                        "Без комментариев", "шапку"
                 },
                 {
                         "Мария", "Петрова", "СПб, Невский 10", "Невский проспект",
                         "+79997654321", "25.12.2024", "Пять суток", "grey",
-                        "Позвоните за час", "footer"
+                        "Позвоните за час", "подвал"
                 }
         });
     }
 
     @Test
-    public void testOrderFlow() {
+    public void testPositiveOrderFlow_userCanCompleteOrder() {
+        // 🔹 Дано: пользователь на главной странице
         MainPage mainPage = new MainPage(driver);
 
-        if ("header".equals(entryPoint)) {
+        // 🔹 Когда: нажимает кнопку "Заказать" (точка входа)
+        if ("шапку".equals(entryPoint)) {
             mainPage.clickHeaderOrderButton();
         } else {
             mainPage.clickFooterOrderButton();
         }
 
+        // 🔹 И: заполняет форму заказа (шаг 1)
         OrderFormPage form = new OrderFormPage(driver);
         form.fillStep1(name, surname, address, metro, phone);
+
+        // 🔹 И: переходит к шагу 2
         form.clickNext();
+
+        // 🔹 И: заполняет данные доставки (шаг 2)
         form.fillStep2(date, period, color, comment);
+
+        // 🔹 И: отправляет заказ
         form.submitOrder();
 
-        assertTrue("Заказ не оформлен", form.isSuccessPopupDisplayed());
+        // 🔹 Тогда: появляется попап об успешном оформлении
+        assertTrue("Заказ не оформлен: не появился попап 'Заказ оформлен'",
+                form.isSuccessPopupDisplayed());
     }
 }
