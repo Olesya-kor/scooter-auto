@@ -5,9 +5,9 @@ import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.openqa.selenium.Keys;
 
 import java.time.Duration;
 
@@ -40,6 +40,9 @@ public class OrderFormPage {
     // Поле "Когда привезти самокат"
     private final By dateInput = By.cssSelector("input[placeholder='* Когда привезти самокат']");
 
+    // Попап календаря
+    private final By datePickerPopup = By.cssSelector(".react-datepicker");
+
     // Выпадающий список "Срок аренды"
     private final By periodDropdown = By.cssSelector(".Dropdown-placeholder");
 
@@ -55,7 +58,7 @@ public class OrderFormPage {
     // Попап успешного оформления
     private final By successPopup = By.xpath("//*[contains(text(), 'Заказ оформлен')]");
 
-    // Первый вариант станции в выпадающем списке метро
+    // Первый вариант станции метро
     private final By firstMetroOption = By.cssSelector(".select-search__select .select-search__option");
 
     public OrderFormPage(WebDriver driver) {
@@ -64,7 +67,9 @@ public class OrderFormPage {
     }
 
     public void acceptCookies() {
-        click(cookieButton);
+        if (!driver.findElements(cookieButton).isEmpty()) {
+            click(cookieButton);
+        }
     }
 
     public void fillStep1(String name, String surname, String address, String metro, String phone) {
@@ -87,8 +92,7 @@ public class OrderFormPage {
         deliveryDate.click();
         deliveryDate.clear();
         deliveryDate.sendKeys(date);
-        deliveryDate.sendKeys(Keys.ENTER);
-        deliveryDate.sendKeys(Keys.TAB);
+        closeDatePicker(deliveryDate);
 
         click(periodDropdown);
         click(By.xpath("//div[contains(@class, 'Dropdown-option') and text()='" + period + "']"));
@@ -120,6 +124,17 @@ public class OrderFormPage {
         }
     }
 
+    private void closeDatePicker(WebElement deliveryDate) {
+        deliveryDate.sendKeys(Keys.ENTER);
+        deliveryDate.sendKeys(Keys.TAB);
+
+        new Actions(driver).moveByOffset(10, 10).click().perform();
+
+        if (!driver.findElements(datePickerPopup).isEmpty()) {
+            wait.until(ExpectedConditions.invisibilityOfElementLocated(datePickerPopup));
+        }
+    }
+
     private void type(By locator, String value) {
         WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
         element.clear();
@@ -136,3 +151,4 @@ public class OrderFormPage {
         ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", element);
     }
 }
+
